@@ -10,6 +10,9 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 
+import com.facebook.react.bridge.ActivityEventListener;
+import com.facebook.react.bridge.BaseActivityEventListener;
+
 import com.paypal.android.sdk.payments.PayPalAuthorization;
 import com.paypal.android.sdk.payments.PayPalConfiguration;
 import com.paypal.android.sdk.payments.PayPalPayment;
@@ -22,7 +25,7 @@ import java.util.HashMap;
 import java.math.BigDecimal;
 
 public class PayPal extends ReactContextBaseJavaModule {
-  private final int paymentIntentRequestCode;
+  private final int paymentIntentRequestCode = 9;
 
   private static final String ERROR_USER_CANCELLED = "USER_CANCELLED";
   private static final String ERROR_INVALID_CONFIG = "INVALID_CONFIG";
@@ -33,12 +36,20 @@ public class PayPal extends ReactContextBaseJavaModule {
   private Context activityContext;
   private Activity currentActivity;
 
-  public PayPal(ReactApplicationContext reactContext, Context activityContext, int requestCode) {
+  public PayPal(ReactApplicationContext reactContext) {
     super(reactContext);
-    this.activityContext = activityContext;
-    this.currentActivity = (Activity)activityContext;
-    this.paymentIntentRequestCode = requestCode;
+    reactContext.addActivityEventListener(mActivityEventListener);
   }
+  
+  // android not callback @ RN 0.30 + Fix 
+  private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+      handleActivityResult(requestCode, resultCode, data);
+    }
+  };
+
 
   @Override
   public String getName() {
@@ -65,6 +76,8 @@ public class PayPal extends ReactContextBaseJavaModule {
   ) {
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
+    this.currentActivity = getCurrentActivity();
+    this.activityContext = this.currentActivity.getBaseContext();
 
     final String environment = payPalParameters.getString("environment");
     final String clientId = payPalParameters.getString("clientId");
